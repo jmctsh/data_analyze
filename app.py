@@ -17,57 +17,24 @@ import plotly.express as px
 import plotly.graph_objects as go
 from PIL import Image
 import matplotlib
+import argparse
+from utils import get_data_loader, clean_text
+
 matplotlib.rcParams['font.sans-serif'] = ['SimHei']
 matplotlib.rcParams['axes.unicode_minus'] = False
-
-# 设置文件路径
-COMMENTS_PATH = os.path.join('xhs', 'search_comments_2025-04-12.json')
-CONTENTS_PATH = os.path.join('xhs', 'search_contents_2025-04-12.json')
 
 # DeepSeek API 配置
 DEEPSEEK_API_KEY = "sk-8dc4ee20fc8a40a4906dc872534a53a7"
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
-# 加载数据
-def load_data():
-    with open(COMMENTS_PATH, 'r', encoding='utf-8') as f:
-        comments_data = json.load(f)
-    
-    with open(CONTENTS_PATH, 'r', encoding='utf-8') as f:
-        contents_data = json.load(f)
-    
-    return comments_data, contents_data
-
-# 统计有效数据数量
-def count_valid_data(comments_data, contents_data):
-    valid_comments = [comment for comment in comments_data if comment.get('content')]
-    valid_contents = [content for content in contents_data if content.get('desc') or content.get('title')]
-    
-    return len(valid_comments), len(valid_contents)
-
-# 提取评论有效内容
-def extract_comments(comments_data):
-    comments_df = pd.DataFrame(comments_data)
-    # 选择需要的列
-    if not comments_df.empty:
-        selected_columns = ['comment_id', 'create_time', 'ip_location', 'note_id', 'content', 
-                           'nickname', 'like_count', 'sub_comment_count']
-        selected_columns = [col for col in selected_columns if col in comments_df.columns]
-        comments_df = comments_df[selected_columns]
-    
-    return comments_df
-
-# 提取内容有效内容
-def extract_contents(contents_data):
-    contents_df = pd.DataFrame(contents_data)
-    # 选择需要的列
-    if not contents_df.empty:
-        selected_columns = ['note_id', 'type', 'title', 'desc', 'time', 'nickname', 
-                           'liked_count', 'comment_count', 'ip_location', 'tag_list']
-        selected_columns = [col for col in selected_columns if col in contents_df.columns]
-        contents_df = contents_df[selected_columns]
-    
-    return contents_df
+# 获取命令行参数
+def get_platform_from_args():
+    parser = argparse.ArgumentParser(description='社交媒体数据分析工具')
+    parser.add_argument('--platform', type=str, default='xhs', 
+                        choices=['xhs', 'dy'], 
+                        help='指定要分析的平台: xhs (小红书) 或 dy (抖音)')
+    args, _ = parser.parse_known_args()
+    return args.platform
 
 # 词频分析
 def word_frequency_analysis(text_series):
@@ -241,16 +208,38 @@ def deepseek_analysis(text):
 
 # Streamlit应用
 def main():
-    st.set_page_config(page_title="小红书数据分析", page_icon="📊", layout="wide")
+    # 获取平台参数
+    platform = get_platform_from_args()
     
-    st.title("小红书网络文本数据分析")
+    # 设置页面配置
+    platform_name = "小红书" if platform == "xhs" else "抖音"
+    st.set_page_config(page_title=f"{platform_name}数据分析", page_icon="📊", layout="wide")
+    
+    st.title(f"{platform_name}网络文本数据分析")
+    
+    # 平台选择器
+    platform_options = {"xhs": "小红书", "dy": "抖音"}
+    selected_platform = st.sidebar.selectbox(
+        "选择分析平台",
+        options=list(platform_options.keys()),
+        format_func=lambda x: platform_options[x],
+        index=list(platform_options.keys()).index(platform)
+    )
+    
+    # 获取对应平台的数据加载器
+    data_loader = get_data_loader(selected_platform)
     
     # 加载数据
     with st.spinner("正在加载数据..."):
-        comments_data, contents_data = load_data()
+        comments_data, contents_data = data_loader.load_data()
+        # 数据清洗
+        comments_data, contents_data = data_loader.clean_data(comments_data, contents_data)
     
     # 统计有效数据数量
-    valid_comments_count, valid_contents_count = count_valid_data(comments_data, contents_data)
+    valid_comments = [comment for comment in comments_data if comment.get('content')]
+    valid_contents = [content for content in contents_data if content.get('desc') or content.get('title')]
+    valid_comments_count = len(valid_comments)
+    valid_contents_count = len(valid_contents)
     
     # 显示数据统计
     st.header("1. 数据统计")
@@ -261,8 +250,8 @@ def main():
         st.metric("内容数据数量", valid_contents_count)
     
     # 提取有效内容
-    comments_df = extract_comments(comments_data)
-    contents_df = extract_contents(contents_data)
+    comments_df = data_loader.extract_comments(comments_data)
+    contents_df = data_loader.extract_contents(contents_data)
     
     # 数据预览
     st.header("2. 数据预览")

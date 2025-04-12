@@ -7,10 +7,8 @@ import jieba
 from collections import Counter
 from snownlp import SnowNLP
 import requests
-
-# 设置文件路径
-COMMENTS_PATH = os.path.join('xhs', 'search_comments_2025-04-12.json')
-CONTENTS_PATH = os.path.join('xhs', 'search_contents_2025-04-12.json')
+import argparse
+from utils import get_data_loader, clean_text
 
 # DeepSeek API 配置
 DEEPSEEK_API_KEY = "sk-8dc4ee20fc8a40a4906dc872534a53a7"
