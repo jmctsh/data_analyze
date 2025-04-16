@@ -24,7 +24,7 @@ matplotlib.rcParams['font.sans-serif'] = ['SimHei']
 matplotlib.rcParams['axes.unicode_minus'] = False
 
 # DeepSeek API 配置
-DEEPSEEK_API_KEY = ""
+DEEPSEEK_API_KEY = "sk-8dc4ee20fc8a40a4906dc872534a53a7"
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 # 获取命令行参数

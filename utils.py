@@ -29,8 +29,33 @@ def clean_text(text):
 class PlatformDataLoader:
     def __init__(self, platform_dir):
         self.platform_dir = platform_dir
-        self.comments_path = os.path.join(platform_dir, 'search_comments_2025-04-12.json')
-        self.contents_path = os.path.join(platform_dir, 'search_contents_2025-04-12.json')
+        # 动态查找最新的评论和内容文件
+        self.comments_path = self._find_latest_file(platform_dir, 'search_comments')
+        self.contents_path = self._find_latest_file(platform_dir, 'search_contents')
+        
+    def _find_latest_file(self, directory, prefix):
+        """查找目录中指定前缀的最新文件
+        
+        Args:
+            directory (str): 目录路径
+            prefix (str): 文件前缀
+            
+        Returns:
+            str: 找到的文件完整路径，如果没找到则返回默认路径
+        """
+        try:
+            files = [f for f in os.listdir(directory) if f.startswith(prefix) and f.endswith('.json')]
+            if not files:
+                # 如果没找到文件，返回默认路径
+                return os.path.join(directory, f'{prefix}_2025-04-12.json')
+            
+            # 按文件名排序，通常最新的文件日期最大
+            latest_file = sorted(files)[-1]
+            return os.path.join(directory, latest_file)
+        except Exception as e:
+            print(f"查找文件失败: {str(e)}")
+            # 出错时返回默认路径
+            return os.path.join(directory, f'{prefix}_2025-04-12.json')
     
     def load_data(self):
         """
